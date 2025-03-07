@@ -261,6 +261,55 @@ public:
 	}
 
 
+	vector& operator=(vector&& other) {
+
+		Alloc new_alloc = AllocTraits::propagate_on_container_copy_assignment::value
+			? other._alloc : _alloc;
+
+
+		T* new_arr = AllocTraits::allocate(new_alloc, other._cap);
+
+		size_t i = 0;
+		try {
+
+			for (; i < other._size; i++) {
+				AllocTraits::construct(new_alloc, new_arr + i, std::move(other._arr[i]));
+			}
+
+		}
+		catch (...) {
+
+			for (size_t j = 0; j < i; j++) {
+				AllocTraits::destroy(new_alloc, new_arr + j);
+			}
+
+			AllocTraits::deallocate(new_alloc, new_arr, other._cap);
+
+			throw;
+		}
+
+		for (size_t j = 0; j < _size; j++) {
+			AllocTraits::destroy(new_alloc, _arr + j);
+		}
+
+		AllocTraits::deallocate(new_alloc, _arr, _cap);
+
+		_alloc = other._alloc;
+		_arr = new_arr;
+		_cap = other._cap;
+		_size = other._size;
+
+		other._arr = nullptr;
+		other._size = 0;
+		other._cap = 0;
+
+		return *this;
+
+	}
+
+
+
+
 	T& at(size_t index) {
 		if (index > _size || index < 0) {
 			throw "index out of range";

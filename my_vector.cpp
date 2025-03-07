@@ -1,5 +1,11 @@
 #include <iostream>
 
+
+/*
+	vector
+*/
+
+
 template <typename T, typename Alloc = std::allocator<T>>
 class vector{
 private:
@@ -7,9 +13,10 @@ private:
 	T* _arr;
 	size_t _size;
 	size_t _cap;
-	//Alloc _alloc;
+
 	Alloc _alloc;
 	using AllocTraits = std::allocator_traits<Alloc>;  
+
 private:
 
 	template <bool isConst>
@@ -40,6 +47,11 @@ private:
 			base_iterator copy = *this;
 			++_ptr;
 			return copy;
+		}
+
+		base_iterator& operator+(size_t k) {
+			_ptr = _ptr + k;
+			return *this;
 		}
 
 		bool operator!=(const base_iterator& other) {
@@ -154,7 +166,7 @@ public:
 		size_t i = 0;
 		try {
 			for (; i < _size; i++) {
-				AllocTraits::construct(_alloc, new_arr + i, _arr[i]);
+				AllocTraits::construct(_alloc, new_arr + i, std::move_if_noexcept(_arr[i]));
 			}
 		}
 		catch (...) {
@@ -176,39 +188,26 @@ public:
 
 
 	void push_back(T&& elem) {
-		if (_arr == nullptr) {
-			_cap = 1;
-			_arr = reinterpret_cast<T*>(new char[_cap * sizeof(T)]);
+		
+		emplace_back(std::move(elem));
 
-		}
-
-		if (_cap > _size) {
-			new(_arr + _size) T(std::move(elem));
-			_size++;
-			return;
-		}
-
-		reserve(2 * _cap);
-		push_back(std::move(elem));
 	}
 
-	void push_back(T& elem) {
+	void push_back(const T& elem) {
 
-		if (_arr == nullptr) {
-			_cap = 1;
-			_arr = reinterpret_cast<T*>(new char[_cap * sizeof(T)]);
+		emplace_back(elem);
 
+	}
+
+	template <typename ...Args>
+	void emplace_back(Args&&... args) {
+
+		if (_size == _cap) {
+			reserve(2 * _cap + 1);
 		}
 
-
-		if (_cap > _size && _size != 0) {
-			new(_arr + _size) T(elem);
-			_size++;
-			return;
-		}
-
-		reserve(2 * _cap);
-		push_back(elem);
+		AllocTraits::construct(_alloc, _arr + _size, std::forward<Args>(args)...);
+		++_size;
 	}
 
 
@@ -262,16 +261,107 @@ public:
 	}
 
 
+	T& at(size_t index) {
+		if (index > _size || index < 0) {
+			throw "index out of range";
+		}
+		else {
+			return _arr[index];
+		}
 
-	~vector() {
+	}
+
+	void clear() {
 
 		for (size_t i = 0; i < _size; i++) {
-			/*(_arr + i)->~T();*/
 			AllocTraits::destroy(_alloc, _arr + i);
 		}
 
-		//delete[] reinterpret_cast<char*>(_arr);
-		AllocTraits::deallocate(_alloc, _arr, _cap);
+		AllocTraits::deallocate(_alloc,_arr, _cap);
+
+		_size = 0;
+		_cap = 0;
+		_arr = nullptr;
+	}
+
+
+	T& back() {
+		return _arr[_size - 1];
+	}
+
+	size_t capacity() {
+		return _cap;
+	}
+
+
+	void insert(iterator& iter, std::initializer_list<T> lst) {
+		size_t new_size = _size + lst.size();
+
+		T* new_arr = AllocTraits::allocate(_alloc, new_size);
+
+		size_t k = 0;
+		try {
+
+			iterator it = begin();
+			
+			for (; it != iter; it++) {
+				AllocTraits::construct(_alloc, new_arr + k, *it);
+				k++;
+			}
+			
+			auto list_it = lst.begin();
+			for (; list_it != lst.end(); list_it++) {
+				AllocTraits::construct(_alloc, new_arr + k, *list_it);
+				k++;
+			}
+
+			for (; k < new_size; k++) {
+				AllocTraits::construct(_alloc, new_arr + k, *it);
+				it++;
+			}
+
+
+
+		}
+		catch (...) {
+			
+			for (size_t j = 0; j < k; j++) {
+				AllocTraits::destroy(_alloc, new_arr + j);
+			}
+
+			AllocTraits::deallocate(_alloc, new_arr, new_size);
+
+			throw;
+		}
+
+		
+
+		clear();
+
+		_arr = new_arr;
+		_size = new_size;
+		_cap = new_size;
+	}
+
+
+
+
+	/*
+		destructor
+	*/
+
+	~vector() {
+
+		if (_arr != nullptr) {
+
+			for (size_t i = 0; i < _size; i++) {
+				/*(_arr + i)->~T();*/
+				AllocTraits::destroy(_alloc, _arr + i);
+			}
+
+			//delete[] reinterpret_cast<char*>(_arr);
+			AllocTraits::deallocate(_alloc, _arr, _cap);
+		}
 	}
 };
 

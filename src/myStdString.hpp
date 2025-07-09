@@ -17,10 +17,19 @@ private:
     }
 
     void copyStr(const char* str){
-        for(size_t i = 0; i < _size; i++){
-            AllocTraits::construct(_alloc, _str + i, str[i]);
+        size_t i = 0;
+
+        try{
+            for(; i < _size; i++){
+                AllocTraits::construct(_alloc, _str + i, str[i]);
+            }
+            AllocTraits::construct(_alloc, _str + _size, '\0');
+
+        }catch(...){
+            for(size_t k = 0; k < i; k++)
+                AllocTraits::destroy(_alloc, _str + k);
+            
         }
-        new(_str + _size) char('\0');
 
     }
 private:
@@ -81,6 +90,7 @@ public:
         _cap =  2 * _size;
         
         _str = AllocTraits::allocate(_alloc, _cap);
+        
 
         copyStr(str);
     }

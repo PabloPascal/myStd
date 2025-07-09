@@ -466,8 +466,7 @@ public:
 	}
 
 	bitReference operator[](size_t index) {
-		return bitReference{ _arr + index / 8, index % 8 };
-
+		return bitReference{ static_cast<char*>(_arr + index / 8), static_cast<uint8_t>(index % 8)};
 	};
 
 	size_t size() {

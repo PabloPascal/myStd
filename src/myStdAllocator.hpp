@@ -72,3 +72,58 @@ struct allocator {
 	}
 };
 
+
+
+
+
+template <typename T, size_t N>
+class StackAllocator
+{
+public:
+	using value_type = T;
+
+	StackAllocator() noexcept
+	 : buffer(reinterpret_cast<T*>(storage)), current(buffer)
+	{}
+
+	StackAllocator(const StackAllocator& other) noexcept
+	 : buffer(reinterpret_cast<T*>(storage)), current(buffer + (other.current - other.buffer))
+	{}
+	
+
+	size_t max_size() const noexcept
+	{
+		return N;
+	}
+
+	template <typename U>
+	struct rebind
+	{
+		using other = StackAllocator<U, N>;
+	};
+
+	T* allocate(size_t n)
+	{
+		if(current + n > buffer + N ) {
+			throw std::bad_alloc();
+		}
+
+		T* ptr = current;
+		current += n;
+
+		return ptr;
+	}
+
+
+	void deallocate(T* buffer, size_t n){
+
+	}
+
+private:
+	alignas(alignof(T)) char storage[N * sizeof(T)];
+	T* buffer;
+	T* current;
+
+
+};
+
